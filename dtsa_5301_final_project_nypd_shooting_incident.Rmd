@@ -1,0 +1,309 @@
+---
+title: 'MTSA 5301: Week 3 Assignment: NYPD Shooting Incident Data Report'
+author: "Huanchee 'Aaron' Chan"
+date: "5/21/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+----
+
+### A. The following summarizes the research purposes of this project:
+* #### To assess general state of the data quality and completeness related to the NYPD-collected historical shooting incidents data in New York City, and to perform some steps to help improve it.
+* #### To provide data-driven findings from the data extract.
+* #### To conduct additional analysis to gain insights not immediately obvious from the data.
+* #### To perform self-assessment on areas of potential bias observed through this research effort, and to attempt to explore possible ways for its mitigation.
+* #### To identify additional questions which can set the stage for potential future research effort.
+<br/>
+* #### Input dataset use for this project: <b>NYPD Shooting Incident (Historical)</b>, obtained from <https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD>.
+
+----
+
+### B. This section involves various R-level and project-level environment initializations, which include:
+* #### the loading of R package libraries relevant to the project,
+* #### the setting of the csv file path for the NYPD Shooting Incident (Historic) data (<https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD>), and
+* #### the summary list of current R session information.
+
+----
+
+```{r project_initialization, echo=T}
+# relevant package libraries loading
+library(tidyverse)
+library(lubridate)
+
+# setting the csv file path of the NYPD shooting incident data (histroic)
+nypd_csv_url <- "https://data.cityofnewyork.us/api/views/833y-fsy8/rows.csv?accessType=DOWNLOAD"
+
+# standard baseline theme used by visualizations on this project ----
+viz_standard_theme <- theme(
+  panel.background = element_rect(fill = "#F9F9F9") # plot canvas' background
+  , panel.grid = element_blank()
+  , panel.grid.major.x = element_line(color = "#f2f2f2", size = 0.2) # major grid lines for x axis
+  , panel.grid.major.y = element_line(color = "#f2f2f2", size = 0.2) # major grid lines for y axis
+  , strip.background = element_rect(fill = "#C5F2FE", size = 15) # facet label's background, font color, and font size
+  , title = element_text(size = 20, color = "#AD0909", face = "bold") # visualization title
+  , plot.subtitle = element_text(size = 14, color = "#0C82CD") # visualization sub title
+)
+
+# session info
+sessionInfo()
+```
+
+----
+
+### C. This section involves data sourcing related steps, which imports the NYPD shooting incident csv file onto R dataset
+
+```{r get_nypd_shooting_data, echo=T}
+
+# Importing nypd shooting incident csv data file from source url onto R dataset
+shooting_data_raw <- read.csv(nypd_csv_url)
+```
+
+----
+
+### D. This section involves a series of data wranglings steps, as follows:
+* #### providing initial preview of data summary prior to the data wranlings,
+* #### performing data type conversion for a number of attributes (fields), namely the <b>categorical</b>-like attributes as <b>factor</b>, and date-like attributes as <b>date</b>,
+* #### removing (dropping) a number of columns not needed by the project, and
+* #### general translation of missing values in select attributes, replacingsubstituting them with default values.
+
+----
+```{r pre_data_wranglings, echo=T}
+
+# initial preview of the summary info for the imported shooting incident data
+dim(shooting_data_raw) # overall dimension information about the dataset
+summary(shooting_data_raw) # additional column level summary
+
+```
+
+----
+
+```{r data_wranglings, echo=T}
+
+# creating new dataset, deriving from original data, and applying various data wrangling steps
+# this derived dataset will serve as basis for subsequent analysis and visualization effort.
+shooting_data <- shooting_data_raw %>%
+  mutate(
+    # defaulting missing value (zero-length string) in PERP_RACE to 'UNKNOWN'
+    PERP_RACE = if_else(PERP_RACE == '', 'UNKNOWN', PERP_RACE)
+
+    # data type conversion for a number of fields ----
+    , OCCUR_DATE = mdy(OCCUR_DATE)
+    , OCCUR_TIME = parse_time(OCCUR_TIME)
+
+    , BORO = factor(BORO)
+    , PERP_SEX = factor(PERP_SEX)
+    , PERP_RACE = factor(PERP_RACE)
+    , PERP_AGE_GROUP = factor(PERP_AGE_GROUP)
+    
+    , VIC_SEX = factor(VIC_SEX)
+    , VIC_RACE = factor(VIC_RACE)
+    , VIC_AGE_GROUP = factor(VIC_AGE_GROUP)
+    
+    # new attributes derived from existing attirbutes
+    , OCCUR_YEAR = year(OCCUR_DATE)
+    , OCCUR_MONTH = month(OCCUR_DATE)
+  ) %>%
+  # the dropping of some fields
+  select(-(X_COORD_CD:Lon_Lat)) 
+```
+----
+
+```{r post_data_wranglings, echo=T}
+# previewing the summary of the dataset post data wranglings
+dim(shooting_data) # overall dimension information about the dataset - post data wranglings
+summary(shooting_data) # additional column level summary - post data wranglings
+```
+
+----
+
+### E. This section presents a number of visualization involving various summarizations of the data.
+
+----
+
+#### <u>E1. Overall Summary Count of Shooting Incident by Borough</u>
+```{r viz_summary_cnt_by_boro, echo = T, fig.width=15}
+shooting_summary_by_boro <- shooting_data %>% count(BORO)
+
+ggplot(shooting_summary_by_boro, aes(x = reorder(BORO, -n), y = n, fill = BORO)) +
+  geom_bar(stat = "identity") +
+  labs(
+    title = "NYPD Summary Shooting Incident Visualization #1"
+    , subtitle = "Overall Summary Count of Shooting Incident by Borough"
+  ) +
+  scale_y_continuous(expand = c(0, 0)) +
+  coord_flip() + xlab('Borough') + ylab('Shooting Incident Count') +
+  viz_standard_theme + # standard / baseline theme
+  theme( # additional theme properties specific to this visualization
+    axis.title = element_text(size = 14)
+    , plot.title = element_text(size = 18)
+    , plot.subtitle = element_text(size = 16)
+    , plot.margin = unit(c(0,0,0,0), "npc")
+    , axis.text = element_text(size = 11)
+    , legend.position = "none"
+  )
+
+```
+
+----
+
+#### <u>E2. Basic shooting incident trending over the reported Years by Borough</u>
+```{r viz_basic_trend_by_year_over_boro, echo = T, fig.height=11, fig.width=16}
+
+shooting_basic_trend_by_year_summary <- shooting_data %>%
+  group_by(OCCUR_YEAR, BORO) %>%
+  summarise(CNT = n()) %>% ungroup()
+
+ggplot(shooting_basic_trend_by_year_summary, aes(x = OCCUR_YEAR, y = CNT, fill = BORO)) +
+  geom_bar(stat = "identity") +
+  facet_grid(rows = vars(BORO), scales = "free_y") +
+  scale_x_continuous(n.breaks = 10) +
+  labs(
+    title = "NYPD Summary Shooting Incident Visualization #2"
+    , subtitle = "General trending over the reported years by Borough"
+  ) + ylab('Shooting Incident Count') + xlab('Year') +
+  viz_standard_theme + # standard / baseline theme
+  theme( # additional theme properties specific to this visualization
+    axis.title = element_text(size = 14)
+    , axis.title.x = element_blank() # hide the axis label (month) for a cleaner screen aesthetics.
+    , axis.text.y = element_text(size = 13)
+    , axis.text.x = element_text(size = 15)
+    , strip.text = element_text(size = 14)
+    , plot.title = element_text(size = 18)
+    , plot.subtitle = element_text(size = 16)
+    , plot.margin = unit(c(0,0,0,0), "npc")
+    , axis.text = element_text(size = 11)
+    , legend.position = "none"
+  )
+```
+
+----
+
+#### <u>E3. More detail shooting incident trending over the reported months and years by Borough</u>
+```{r viz_detail_trend_by_month_and_year_over_boro, echo = T, fig.height=11, fig.width=18, dpi=200}
+
+shooting_deail_trend_by_month_year_summary <- shooting_data %>%
+  group_by(OCCUR_YEAR, OCCUR_MONTH, BORO) %>%
+  summarise(CNT = n()) %>% ungroup()
+
+ggplot(shooting_deail_trend_by_month_year_summary, aes(y = CNT, x = OCCUR_MONTH)) +
+  geom_line() +
+  facet_grid(BORO ~ OCCUR_YEAR, scales = "free_y") +
+  labs(
+    title = "NYPD Summary Shooting Incident Visualization #3"
+    , subtitle = "More detail trending over the reported months and years by Borough"
+  ) + ylab('Shooting Incident Count') + xlab('Year') +
+  viz_standard_theme + # standard / baseline theme
+  theme( # additional theme properties specific to this visualization
+    , axis.title.y = element_text(size = 14)
+    , axis.title.x = element_blank() # hide the axis label (month) for a cleaner screen aesthetics.
+    , axis.text.y = element_text(size = 13)
+    , axis.text.x = element_blank()
+    , axis.ticks.x = element_blank()
+    , strip.text = element_text(size = 14)
+    , plot.title = element_text(size = 18)
+    , plot.subtitle = element_text(size = 16)
+    , plot.margin = unit(c(0,0,0,0), "npc")
+    , axis.text = element_text(size = 11)
+  )
+```
+
+----
+
+#### <u>E4. Overall Summary Count of Shooting Incident by Perpetrator and Victim's Race.</u>
+```{r viz_perp_vic_summary, echo = T, fig.height=12, fig.width=19, dpi=300}
+
+# preparing the data aggregates
+shooting_data_race_summary <- shooting_data %>%
+  group_by(PERP_RACE, VIC_RACE) %>% 
+  summarise(INCIDENT_COUNT = n()) %>%
+  ungroup()
+
+# visualizing the shooting count by prepetrator and victim heatmap
+ggplot(shooting_data_race_summary, aes(x = VIC_RACE, y = PERP_RACE)) +
+  geom_tile(stat = "sum", aes(fill = INCIDENT_COUNT)) +
+  geom_text(aes(label = format(INCIDENT_COUNT, big.mark = ",")), size = 11) +
+  scale_fill_gradient(low = "#FFFDE8", high = "#FE7D86") +
+  labs(
+      title = "NYPD Summary Shooting Incident Visualization #4"
+      , subtitle = "Overall Summary Count of Shooting Incident by Perpetrator and Victim's Race"
+  ) +
+  xlab("Victim's Race") + ylab("Perpetrator's Race") +
+  viz_standard_theme + # standard / baseline theme
+  theme( # additional theme properties specific to this visualization
+      axis.title = element_text(size = 14)
+      , plot.title = element_text(size = 18)
+      , plot.subtitle = element_text(size = 16)
+      , plot.margin = unit(c(0,0,0,0), "npc")
+      , axis.text = element_text(size = 13)
+      , axis.text.x = element_text(angle = 45, hjust = 1)
+      , legend.position = "none"
+  )
+```
+
+----
+
+### F. A bit more in-depth analysis:
+
+----
+
+#### <u>F1. Question: What are some of the worst months for shooting incidents among the Boroughs?</u>
+
+```{r analysis_summary_worst_shooting_month_per_each_borough, echo = T, fig.width=17}
+
+shooting_data %>%
+  group_by(BORO, OCCUR_YEAR, OCCUR_MONTH) %>% # group the data by the Borough-Year-Month groupings
+  summarise(n = n()) %>% # aggregate the total shooting incident count per each of these groupings
+  slice_max(order_by = n) %>% # identify the with worst (largest) count per each of these groupings
+  group_by(BORO, OCCUR_MONTH) %>% # further grouping of the summary data, now at Borough-and-Month groupings
+  summarise(n = sum(n)) %>% # aggregate the total shooting incident, showing count by each Borough-and-Month
+  slice_max(order_by = n) %>% # finally, identify the worst month on record per each Borough
+  rename(SHOOTING_CNT_IN_THAT_MONTH = n) %>% # slight renaming for clarity
+  mutate(OCCUR_MONTH = month.name[OCCUR_MONTH]) # trasnlate numeric month value to month name for clarity
+
+```
+
+#### <u>Observation</u>: In the 15 years of the NYPD shooting data collection, <span style="color: red; font-weight: bold;">July</span> and <span style="color: red; font-weight: bold;">August</span> consistently rank the worst months for these five NYC Boroughs when it comes to shooting incidents.
+
+----
+
+#### <u>F2. Question: What races are involved in the shooting incidents?</u>
+
+#### <u>Observation</u>: Based on the heat map from <b>Section E4</b>, the following shows the <u>top three</u> most frequently occured prepetrator and victim race combos involved in the NYPD-recorded shooting incidents:
+
+```{r analysis_top_perp_vic_race_combos, echo = T, fig.width=12}
+
+shooting_data_race_summary %>%
+  slice_max(order_by = INCIDENT_COUNT, n = 3) %>% # get the top three perpetrator and victim race combos
+  setNames(c("Perpetrator_Race", "Victim_Race", "Incident_Count")) # tidy up the column names for clarity
+
+```
+
+#### Due to the lack of more precise data capture, we are not able to determine more exact race info behind the UNKNOWNs shown above.
+
+----
+
+### G. General assessment of self-observed potential bias when preparing and publishing this report:
+
+* #### When reviewing the missing values (zero-length string) in the PERP_RACE data attribute, it is tempting to attempt to infer its possible value as racially proportional to the overall known PERP_RACE's ratio. Doing so, however, could mis-represent the result given given the assumption that it should generally corresponding to the overall ratio of known perpetrator's race percentage. As part of the mitigation, the author has opted to assign the default value of these missing's as 'UNKNOWN', which, while preventing a more precise and accurate report by true PERP_RACE, it also prevents it from being mis-reported potentially incorrect race-ratio driven inference / assumption.
+
+* #### When observing each Borough's count of shooting incident without the knowledge of the overall population of each Boroughs, it can be misleading to assume that the Boroughs with relatively higher number of shooting incident counts automatically implies that the Borough also has higher percentage of shooting incident over its own population, which may not necessarily be correct. To mitigate this bias, it's important to obtain additional supporting data about the population of each of the borough, ideally as reflected by the exact time of the incident, and provide an alternative summary trending visualization using shooting incident over percentage of population. The process requires additional data source import and joining to establish the linkage, which effort is probably beyond the scope of this project.
+
+* #### When observing the noticeable spike on the shooting incident trending, especially in the final year of the collected data, assumption might be incorrectly made that this indeed represent a true spike of the shooting incident over prior years -- could it be possible that the shooting data collected throughout the years prior to the year it had the spike were incomplete?
+
+----
+
+### H. Additional open questions as well as potential future works which can be built on top of this research effort:
+
+* #### What are the alternative source of NYC shooting incident data that can be use as cross reference to the NYPD Shooting Incident (Historical) data? Could it yield additional level of details and perspectives?
+
+* #### The use of shooting incident data collected for and by other major cities the in the US, to cross study and compare with the NYPD shooting incident data.
+
+* #### The use of configurable dataset related to external events, such as public holidays (Fourth of July), civil activities (e.g. protests) or specific festivals (e.g. New Year's Eve), to assess correlation to noticeable brief spikes in the NYPD shooting incident data.
+
+* #### More broaden, data-informed gun violence research utilizing similar data, both for public awareness and education opportunities.
+
