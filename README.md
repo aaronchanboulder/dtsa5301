@@ -1,4 +1,4 @@
-# dtsa5301
+# DTSA 5301 (Data Science as a Field)
 Repository for DTSA 5301 (Data Science as a Field)
 
 1. Final Project 1 > NYPD Shooting Incident > RMarkdown Report Output:
