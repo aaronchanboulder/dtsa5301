@@ -8,4 +8,4 @@ Repository for DTSA 5301 (Data Science as a Field)
 [dtsa_5301_final_project_nypd_shooting_incident.Rmd](https://github.com/aaronchanboulder/dtsa5301/blob/c01810dbac2d4f31b247316f98bd9d7ac929bd51/dtsa_5301_final_project_nypd_shooting_incident.Rmd)
 
 3. The presentation slides for the research project:
-(https://htmlpreview.github.io/?https://github.com/aaronchanboulder/dtsa5301/blob/main/mtsa5301.final.project.1.presentation.pdf)
+(https://github.com/aaronchanboulder/dtsa5301/blob/main/mtsa5301.final.project.1.presentation.pdf)
